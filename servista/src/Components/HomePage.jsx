@@ -5,6 +5,8 @@ import CardLayout from "./CardLayout";
 import { useState, useEffect } from "react";
 import Travel from "./Travel/Travel";
 import Trains from "./Travel/Trains";
+import axios from "axios";
+import xmlJs from "xml-js";
 import {
   Card,
   CardHeader,
@@ -14,29 +16,102 @@ import {
 import trainbg from "./trainbg.jpg";
 import flightbg from "./flightbg.jpg";
 const HomePage = () => {
-  const [isVisible, setIsVisible] = useState(false);
+
+  const data = [
+    {
+      mode: 'Cab to Airport',
+      price: '₹250',
+      time: '20min'
+    },
+    {
+      mode: 'Flight to Delhi',
+      price: '₹3000',
+      time: '4hrs'
+    },
+    {
+      mode: 'Cab to hotel ',
+      price: '₹200',
+      time: '30min'
+    }
+  ]
   const [isVisible1, setIsVisible1] = useState(false);
   const [isVisible2, setIsVisible2] = useState(false);
   const [isVisible3, setIsVisible3] = useState(false);
   const [isBlurred, setBlurred] = useState(false);
+  const [jsonResult, setJsonResult] = useState(null);
+  const options = {
+    method: "GET",
+    url: "https://irctc1.p.rapidapi.com/api/v2/trainBetweenStations",
+    params: {
+      fromStationCode: "TVC",
+      toStationCode: "NDLS",
+      dateOfJourney: "2023-11-30",
+    },
+    headers: {
+      "X-RapidAPI-Key": "5398f67e2fmsh2d0f0eaff66286ap12c05fjsn3757d9407757",
+      "X-RapidAPI-Host": "irctc1.p.rapidapi.com",
+    },
+  };
 
+  const optionFlight = {
+    method: 'GET',
+    url: 'https://tripadvisor16.p.rapidapi.com/api/v1/flights/searchFlights',
+    params: {
+      sourceAirportCode: 'TRV',
+      destinationAirportCode: 'DEL',
+      date: '2023-11-23',
+      itineraryType: 'ONE_WAY',
+      sortOrder: 'PRICE',
+      numAdults: '1',
+      numSeniors: '0',
+      classOfService: 'ECONOMY',
+      pageNumber: '1',
+      currencyCode: 'INR'
+    },
+    headers: {
+      'X-RapidAPI-Key': '5398f67e2fmsh2d0f0eaff66286ap12c05fjsn3757d9407757',
+      'X-RapidAPI-Host': 'tripadvisor16.p.rapidapi.com'
+    }
+  };
+
+  const fetchFlight = async () => {
+    try {
+      const response = await axios.request(optionFlight);
+      console.log(response.data);
+      // let xmlData = response.data;
+      // const jsonResult = xmlJs.xml2json(xmlData, { compact: true, spaces: 4 });
+      // console.log(JSON.parse(jsonResult));
+      // setJsonResult(JSON.parse(jsonResult));
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const fetchData = async () => {
+    try {
+      const response = await axios.request(options);
+      console.log(response.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
   const showCard = () => {
     setBlurred(true);
-    setIsVisible(false)
     setIsVisible1(false);
-    setIsVisible2(false)
-    setIsVisible3(false)
+    setIsVisible2(false);
+    setIsVisible3(false);
     setTimeout(() => {
-      setIsVisible(true)
       setIsVisible1(true);
     }, 1000);
   };
 
   const handleClickTrain = () => {
     setIsVisible2(true);
+    fetchData();
   };
   const handleClickFlight = () => {
     setIsVisible3(true);
+    fetchFlight();
   };
 
   const [typedText, setTypedText] = useState("");
@@ -71,7 +146,9 @@ const HomePage = () => {
         muted
         playsInline
         loop
-        className={`w-full h-full object-center absolute top-0 left-0 -z-10 ${isBlurred ? 'blur' : ''} transition-all ease-in-out duration-1000`}
+        className={`w-full h-full object-center absolute top-0 left-0 -z-10 ${
+          isBlurred ? "blur" : ""
+        } transition-all ease-in-out duration-1000`}
         poster="https://ondc.org/assets/theme/images/video_img.jpg"
       >
         <source
@@ -89,7 +166,7 @@ const HomePage = () => {
         <div className="absolute inset-0 bg-black bg-opacity-60 blur-xl"></div>
       </div>
 
-      <div
+      {/* <div
         className={`flex gap-6 justify-around opacity-${
           isVisible1 ? "100" : "0"
         } transform ${
@@ -302,26 +379,12 @@ const HomePage = () => {
             </CardBody>
           </Card>
         </div>
-      </div>
-
-      {/* <div className={`flex justify-center gap-4`}>
-        <div className={` opacity-${isVisible ? '100' : '0'} transform ${isVisible ? 'translate-y-0' : 'translate-y-40'} transition-all ease-in-out duration-500 delay-0`}>
-          <CardLayout />
-        </div>
-        <div className={` opacity-${isVisible ? '100' : '0'} transform ${isVisible ? 'translate-y-0' : 'translate-y-40'} transition-all ease-in-out duration-500 delay-100`}>
-          <CardLayout />
-        </div>
-        <div className={` opacity-${isVisible ? '100' : '0'} transform ${isVisible ? 'translate-y-0' : 'translate-y-40'} transition-all ease-in-out duration-500 delay-200`}>
-          <CardLayout />
-        </div>
-        <div className={` opacity-${isVisible ? '100' : '0'} transform ${isVisible ? 'translate-y-0' : 'translate-y-40'} transition-all ease-in-out duration-500 delay-300`}>
-          <CardLayout />
-        </div>
-        <div className={` opacity-${isVisible ? '100' : '0'} transform ${isVisible ? 'translate-y-0' : 'translate-y-40'} transition-all ease-in-out duration-500 delay-500`}>
-          <CardLayout />
-        </div>
       </div> */}
-
+      <div className={`flex justify-center gap-4`}>
+        {data.map((item, index) => (
+          <CardLayout key={index} {...item} />
+        ))}
+      </div>
       <div className=" px-10 pt-4 absolute mb-5 bottom-0 w-full">
         <div className="relative flex">
           <span className="absolute inset-y-0 flex items-center">
