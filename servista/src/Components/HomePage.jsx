@@ -14,6 +14,7 @@ import {
 import trainbg from "./trainbg.jpg";
 import flightbg from "./flightbg.jpg";
 const HomePage = () => {
+  const [isVisible, setIsVisible] = useState(false);
   const [isVisible1, setIsVisible1] = useState(false);
   const [isVisible2, setIsVisible2] = useState(false);
   const [isVisible3, setIsVisible3] = useState(false);
@@ -21,10 +22,12 @@ const HomePage = () => {
 
   const showCard = () => {
     setBlurred(true);
+    setIsVisible(false)
     setIsVisible1(false);
     setIsVisible2(false)
     setIsVisible3(false)
     setTimeout(() => {
+      setIsVisible(true)
       setIsVisible1(true);
     }, 1000);
   };
@@ -300,6 +303,25 @@ const HomePage = () => {
           </Card>
         </div>
       </div>
+
+      {/* <div className={`flex justify-center gap-4`}>
+        <div className={` opacity-${isVisible ? '100' : '0'} transform ${isVisible ? 'translate-y-0' : 'translate-y-40'} transition-all ease-in-out duration-500 delay-0`}>
+          <CardLayout />
+        </div>
+        <div className={` opacity-${isVisible ? '100' : '0'} transform ${isVisible ? 'translate-y-0' : 'translate-y-40'} transition-all ease-in-out duration-500 delay-100`}>
+          <CardLayout />
+        </div>
+        <div className={` opacity-${isVisible ? '100' : '0'} transform ${isVisible ? 'translate-y-0' : 'translate-y-40'} transition-all ease-in-out duration-500 delay-200`}>
+          <CardLayout />
+        </div>
+        <div className={` opacity-${isVisible ? '100' : '0'} transform ${isVisible ? 'translate-y-0' : 'translate-y-40'} transition-all ease-in-out duration-500 delay-300`}>
+          <CardLayout />
+        </div>
+        <div className={` opacity-${isVisible ? '100' : '0'} transform ${isVisible ? 'translate-y-0' : 'translate-y-40'} transition-all ease-in-out duration-500 delay-500`}>
+          <CardLayout />
+        </div>
+      </div> */}
+
       <div className=" px-10 pt-4 absolute mb-5 bottom-0 w-full">
         <div className="relative flex">
           <span className="absolute inset-y-0 flex items-center">
