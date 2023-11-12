@@ -1,87 +1,85 @@
 import Navbar from "./Navbar";
-import landingBg from "./landingbg.jpg";
 import "../App.css";
 import CardLayout from "./CardLayout";
 import { useState, useEffect } from "react";
-import Travel from "./Travel/Travel";
-import Trains from "./Travel/Trains";
 import axios from "axios";
-import xmlJs from "xml-js";
-import {
-  Card,
-  CardHeader,
-  CardBody,
-  Typography,
-} from "@material-tailwind/react";
+import { useNavigate } from "react-router-dom";
+import { ImCheckboxChecked } from "react-icons/im";
 import trainbg from "./trainbg.jpg";
-import flightbg from "./flightbg.jpg";
-const HomePage = () => {
 
-  const data = [
-    {
-      mode: 'Cab to Airport',
-      price: '₹250',
-      time: '20min'
-    },
-    {
-      mode: 'Flight to Delhi',
-      price: '₹3000',
-      time: '4hrs'
-    },
-    {
-      mode: 'Cab to hotel ',
-      price: '₹200',
-      time: '30min'
-    }
-  ]
+const HomePage = () => {
+  const [finalData, setFinalData] = useState([]);
+
   const [isVisible1, setIsVisible1] = useState(false);
-  const [isVisible2, setIsVisible2] = useState(false);
-  const [isVisible3, setIsVisible3] = useState(false);
   const [isBlurred, setBlurred] = useState(false);
-  const [jsonResult, setJsonResult] = useState(null);
+  const [data, setData] = useState({ train: {}, flight: {} });
+  const [prompt, setPrompt] = useState("");
+  const [minRate, setMinRate] = useState(null);
+  const navigate = useNavigate();
+  const [outputText, setOutputText] = useState("");
+  const [isListening, setListening] = useState(false);
+
+  const runSpeechRecognition = () => {
+    setOutputText("Loading text...");
+    setListening(true);
+
+    const recognition = new window.webkitSpeechRecognition();
+
+    recognition.onstart = () => {
+      // Do something when recognition starts
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setPrompt(transcript);
+      setListening(false);
+    };
+
+    recognition.start();
+  };
   const options = {
     method: "GET",
     url: "https://irctc1.p.rapidapi.com/api/v2/trainBetweenStations",
     params: {
-      fromStationCode: "TVC",
-      toStationCode: "NDLS",
-      dateOfJourney: "2023-11-30",
+      fromStationCode: data.train.from,
+      toStationCode: data.train.to,
+      dateOfJourney: data.train.date,
     },
     headers: {
-      "X-RapidAPI-Key": "5398f67e2fmsh2d0f0eaff66286ap12c05fjsn3757d9407757",
+      "X-RapidAPI-Key": "34b9e513a2msh172b3abb12adbd5p179a94jsn32990c4018b4",
       "X-RapidAPI-Host": "irctc1.p.rapidapi.com",
     },
   };
 
   const optionFlight = {
-    method: 'GET',
-    url: 'https://tripadvisor16.p.rapidapi.com/api/v1/flights/searchFlights',
+    method: "GET",
+    url: "https://tripadvisor16.p.rapidapi.com/api/v1/flights/searchFlights",
     params: {
-      sourceAirportCode: 'TRV',
-      destinationAirportCode: 'DEL',
-      date: '2023-11-23',
-      itineraryType: 'ONE_WAY',
-      sortOrder: 'PRICE',
-      numAdults: '1',
-      numSeniors: '0',
-      classOfService: 'ECONOMY',
-      pageNumber: '1',
-      currencyCode: 'INR'
+      sourceAirportCode: data.flight.from,
+      destinationAirportCode: data.flight.to,
+      date: data.flight.date,
+      itineraryType: "ONE_WAY",
+      sortOrder: "PRICE",
+      numAdults: "1",
+      numSeniors: "0",
+      classOfService: "ECONOMY",
+      pageNumber: "1",
+      currencyCode: "INR",
     },
     headers: {
-      'X-RapidAPI-Key': '5398f67e2fmsh2d0f0eaff66286ap12c05fjsn3757d9407757',
-      'X-RapidAPI-Host': 'tripadvisor16.p.rapidapi.com'
-    }
+      "X-RapidAPI-Key": "5398f67e2fmsh2d0f0eaff66286ap12c05fjsn3757d9407757",
+      "X-RapidAPI-Host": "tripadvisor16.p.rapidapi.com",
+    },
   };
 
   const fetchFlight = async () => {
     try {
       const response = await axios.request(optionFlight);
-      console.log(response.data);
-      // let xmlData = response.data;
-      // const jsonResult = xmlJs.xml2json(xmlData, { compact: true, spaces: 4 });
-      // console.log(JSON.parse(jsonResult));
-      // setJsonResult(JSON.parse(jsonResult));
+      console.log(response);
+      let minRateValue =
+        response.data.data.flights[0].purchaseLinks[0].totalPrice;
+      console.log(minRateValue);
+      return minRateValue;
     } catch (error) {
       console.error(error);
     }
@@ -91,31 +89,79 @@ const HomePage = () => {
     try {
       const response = await axios.request(options);
       console.log(response.data);
+      const { data } = response.data;
+      let minRateValue = data.reduce((minObj, currentObj) => {
+        return currentObj.distance < minObj.distance ? currentObj : minObj;
+      }, data[0]);
+      return minRateValue;
     } catch (error) {
       console.error(error);
     }
   };
+
+  const sendPrompt = async () => {
+    let url = "http://192.168.32.214:5000/chat";
+    let data = { data: prompt };
+    let response = await axios.post(url, data);
+    setData(response.data);
+    console.log(response.data);
+    if (response.data.id === 2) {
+      navigate("/expense");
+    } else if (response.data.id === 0) {
+      if (response.data.flag === 0) {
+        const minRateValue = await fetchData();
+        setMinRate(minRateValue);
+      }
+      if (response.data.flag === 1) {
+        const minRateValue = await fetchFlight();
+        setMinRate(minRateValue);
+      }
+    }
+    // setFinalData({
+    //   descabPrice: response.data.descab.price,
+    //   srccabPrice: response.data.srccab.price,
+    //   flightPrice: minRate,
+    // });
+    setFinalData([
+      {
+        pic: "https://img.freepik.com/premium-photo/smartphone-near-yellow-taxi-taxi-visa-concept_661214-5065.jpg?size=626&ext=jpg&uid=R124558027&ga=GA1.1.1337867384.1699274947&semt=sph",
+        name: "DES Cab Charges",
+        price: response.data.descab.price,
+      },
+      {
+        pic: "https://img.freepik.com/premium-photo/smartphone-near-yellow-taxi-taxi-visa-concept_661214-5065.jpg?size=626&ext=jpg&uid=R124558027&ga=GA1.1.1337867384.1699274947&semt=sph",
+        name: "SRC Cab Charges",
+        price: response.data.srccab.price,
+      },
+      {
+        pic: "https://img.freepik.com/premium-photo/airplane-airport-sunset-travel-tourism-concept-realistic-ilustration_669798-3857.jpg?size=626&ext=jpg&uid=R124558027&ga=GA1.1.1337867384.1699274947&semt=sph",
+        name: "Flight Charges",
+        price: 7099,
+      },
+
+      {
+        pic: "https://img.freepik.com/free-photo/luxury-bedroom-suite-resort-high-rise-hotel-with-working-table_105762-1783.jpg?size=626&ext=jpg&uid=R124558027&ga=GA1.1.1337867384.1699274947&semt=sph",
+        name: "Hotel Charges",
+        price: response.data.hotel.price,
+      },
+    ]);
+  };
+
   const showCard = () => {
+    sendPrompt();
     setBlurred(true);
     setIsVisible1(false);
-    setIsVisible2(false);
-    setIsVisible3(false);
     setTimeout(() => {
       setIsVisible1(true);
     }, 1000);
   };
 
-  const handleClickTrain = () => {
-    setIsVisible2(true);
-    fetchData();
-  };
-  const handleClickFlight = () => {
-    setIsVisible3(true);
-    fetchFlight();
+  const handleTick = () => {
+    navigate("/checkout", { state: { finalData } });
   };
 
   const [typedText, setTypedText] = useState("");
-  const textToType = "Welcome to SerVista";
+  const textToType = "Welcome to FinEase";
   const typingSpeed = 100;
 
   useEffect(() => {
@@ -133,22 +179,14 @@ const HomePage = () => {
   }, []);
 
   return (
-    <div
-      className="w-screen h-screen relative"
-      // style={{
-      //   backgroundImage: `url(${landingBg})`,
-      //   backgroundSize: "cover",
-      //   backgroundPosition: "center",
-      // }}
-    >
+    <div className="w-screen h-screen relative">
       <video
         autoPlay
         muted
         playsInline
         loop
-        className={`w-full h-full object-center absolute top-0 left-0 -z-10 ${
-          isBlurred ? "blur" : ""
-        } transition-all ease-in-out duration-1000`}
+        className={`w-full h-full object-center absolute top-0 left-0 -z-10 ${isBlurred ? "blur" : ""
+          } transition-all ease-in-out duration-1000`}
         poster="https://ondc.org/assets/theme/images/video_img.jpg"
       >
         <source
@@ -165,232 +203,62 @@ const HomePage = () => {
         </div>
         <div className="absolute inset-0 bg-black bg-opacity-60 blur-xl"></div>
       </div>
+      <div className="flex flex-col items-center h-full">
+        {isVisible1 && (
+          <div className="flex justify-center gap-4">
+            {data.id === 0 ? (
+              <>
+                <CardLayout
+                  mode={`CAB TO ${data.flight ? data.flight.from : data.train.from
+                    }`}
+                  price={data.srccab.price}
+                  time={data.srccab.duration}
+                />
+                <div></div>
+                <CardLayout
+                  mode={
+                    data?.flag === 1
+                      ? `FLIGHT TO ${data.flight.to}`
+                      : `TRAIN TO ${data.train.to}`
+                  }
+                  price={data?.flag === 1
+                    ? 7099
+                    : 2550}
+                  time={data?.flag === 1
+                    ? '3h 15m'
+                    : '44h 25min'}
+                />
+                <CardLayout
+                  mode={`CAB TO ${data.flight ? data.flight.to : data.train.to
+                    }`}
+                  price={data.descab.price}
+                  time={data.descab.duration}
+                />
 
-      {/* <div
-        className={`flex gap-6 justify-around opacity-${
-          isVisible1 ? "100" : "0"
-        } transform ${
-          isVisible1 ? "translate-y-0" : "translate-y-40"
-        } transition-all ease-in-out duration-500`}
-      >
-        <Card
-          shadow={false}
-          className="relative grid h-28 w-48 items-end justify-center overflow-hidden text-center cursor-pointer"
-          onClick={handleClickTrain}
-        >
-          <CardHeader
-            floated={false}
-            style={{ backgroundImage: `url(${trainbg})` }}
-            color="transparent"
-            className="absolute inset-0 m-0 h-full w-full rounded-none bg-cover bg-center"
-          >
-            <div className="to-bg-black-10 absolute inset-0 h-full w-full bg-gradient-to-t from-black/80 via-black/50" />
-          </CardHeader>
-          <CardBody className="relative py-14 px-6 md:px-12">
-            <Typography
-              variant="h4"
-              color="white"
-              className="mb-6 font-medium leading-[1.5]"
-            >
-              Train
-            </Typography>
-            <span>$3400</span>
-          </CardBody>
-        </Card>
-        <Card
-          shadow={false}
-          className="relative grid h-28 w-48 items-end justify-center overflow-hidden text-center cursor-pointer"
-          onClick={handleClickFlight}
-        >
-          <CardHeader
-            floated={false}
-            style={{ backgroundImage: `url(${flightbg})` }}
-            color="transparent"
-            className="absolute inset-0 m-0 h-full w-full rounded-none bg-cover bg-center"
-          >
-            <div className="to-bg-black-10 absolute inset-0 h-full w-full bg-gradient-to-t from-black/80 via-black/50" />
-          </CardHeader>
-          <CardBody className="relative py-14 px-6 md:px-12">
-            <Typography
-              variant="h4"
-              color="white"
-              className="mb-6 font-medium leading-[1.5]"
-            >
-              Flight
-            </Typography>
-            <span>$15000</span>
-          </CardBody>
-        </Card>
-      </div>
-      <br />
-      <br />
-      <div className="flex justify-around">
-        <div
-          className={`flex gap-6 my-5 mx-4 opacity-${
-            isVisible2 ? "100" : "0"
-          } transform ${
-            isVisible2 ? "translate-y-0" : "translate-y-40"
-          } transition-all ease-in-out duration-500 `}
-        >
-          <Card
-            shadow={false}
-            className="relative grid h-28 w-48 items-end justify-center overflow-hidden text-center cursor-pointer"
-          >
-            <CardHeader
-              floated={false}
-              style={{ backgroundImage: `url(${trainbg})` }}
-              color="transparent"
-              className="absolute inset-0 m-0 h-full w-full rounded-none bg-cover bg-center"
-            >
-              <div className="to-bg-black-10 absolute inset-0 h-full w-full bg-gradient-to-t from-black/80 via-black/50" />
-            </CardHeader>
-            <CardBody className="relative py-1 px-6 md:px-12">
-              <Typography
-                variant="h6"
-                color="white"
-                className=" font-medium leading-[1.5]"
-              >
-                Rajdhani EXP
-              </Typography>
-              <span className="text-white">$340</span>
-            </CardBody>
-          </Card>
-          <Card
-            shadow={false}
-            className="relative grid h-28 w-48 items-end justify-center overflow-hidden text-center cursor-pointer"
-          >
-            <CardHeader
-              floated={false}
-              style={{ backgroundImage: `url(${trainbg})` }}
-              color="transparent"
-              className="absolute inset-0 m-0 h-full w-full rounded-none bg-cover bg-center"
-            >
-              <div className="to-bg-black-10 absolute inset-0 h-full w-full bg-gradient-to-t from-black/80 via-black/50" />
-            </CardHeader>
-            <CardBody className="relative py-1 px-6 md:px-12">
-              <Typography
-                variant="h6"
-                color="white"
-                className=" font-medium leading-[1.5]"
-              >
-                Kerala EXP
-              </Typography>
-              <span className="text-white">$340</span>
-            </CardBody>
-          </Card>
-          <Card
-            shadow={false}
-            className="relative grid h-28 w-48 items-end justify-center overflow-hidden text-center cursor-pointer"
-          >
-            <CardHeader
-              floated={false}
-              style={{ backgroundImage: `url(${trainbg})` }}
-              color="transparent"
-              className="absolute inset-0 m-0 h-full w-full rounded-none bg-cover bg-center"
-            >
-              <div className="to-bg-black-10 absolute inset-0 h-full w-full bg-gradient-to-t from-black/80 via-black/50" />
-            </CardHeader>
-            <CardBody className="relative py-1 px-6 md:px-12">
-              <Typography
-                variant="h6"
-                color="white"
-                className=" font-medium leading-[1.5]"
-              >
-                Tvm- Nzm EXP
-              </Typography>
-              <span className="text-white">$340</span>
-            </CardBody>
-          </Card>
+                <CardLayout mode={`${data.hotel.name}`} />
+              </>
+            ) : (
+              <CardLayout />
+            )}
+          </div>
+        )}
+        <div className="w-[80vw] rounded-md h-40 bg-gray-50 shadow-md p-4">
+          <span className=" text-justify font-normal text-xl">
+            {data?.response}
+          </span>
         </div>
-        <div
-          className={`flex gap-6 my-5 mx-4 opacity-${
-            isVisible3 ? "100" : "0"
-          } transform ${
-            isVisible3 ? "translate-y-0" : "translate-y-40"
-          } transition-all ease-in-out duration-500 `}
-        >
-          <Card
-            shadow={false}
-            className="relative grid h-28 w-48 items-end justify-center overflow-hidden text-center cursor-pointer"
-          >
-            <CardHeader
-              floated={false}
-              style={{ backgroundImage: `url(${flightbg})` }}
-              color="transparent"
-              className="absolute inset-0 m-0 h-full w-full rounded-none bg-cover bg-center"
-            >
-              <div className="to-bg-black-10 absolute inset-0 h-full w-full bg-gradient-to-t from-black/80 via-black/50" />
-            </CardHeader>
-            <CardBody className="relative py-1 px-6 md:px-12">
-              <Typography
-                variant="h6"
-                color="white"
-                className=" font-medium leading-[1.5]"
-              >
-                Air India
-              </Typography>
-              <span className="text-white">$340</span>
-            </CardBody>
-          </Card>
-          <Card
-            shadow={false}
-            className="relative grid h-28 w-48 items-end justify-center overflow-hidden text-center cursor-pointer"
-          >
-            <CardHeader
-              floated={false}
-              style={{ backgroundImage: `url(${flightbg})` }}
-              color="transparent"
-              className="absolute inset-0 m-0 h-full w-full rounded-none bg-cover bg-center"
-            >
-              <div className="to-bg-black-10 absolute inset-0 h-full w-full bg-gradient-to-t from-black/80 via-black/50" />
-            </CardHeader>
-            <CardBody className="relative py-1 px-6 md:px-12">
-              <Typography
-                variant="h6"
-                color="white"
-                className=" font-medium leading-[1.5]"
-              >
-                IndiGo
-              </Typography>
-              <span className="text-white">$340</span>
-            </CardBody>
-          </Card>
-          <Card
-            shadow={false}
-            className="relative grid h-28 w-48 items-end justify-center overflow-hidden text-center cursor-pointer"
-          >
-            <CardHeader
-              floated={false}
-              style={{ backgroundImage: `url(${flightbg})` }}
-              color="transparent"
-              className="absolute inset-0 m-0 h-full w-full rounded-none bg-cover bg-center"
-            >
-              <div className="to-bg-black-10 absolute inset-0 h-full w-full bg-gradient-to-t from-black/80 via-black/50" />
-            </CardHeader>
-            <CardBody className="relative py-1 px-6 md:px-12">
-              <Typography
-                variant="h6"
-                color="white"
-                className=" font-medium leading-[1.5]"
-              >
-                SpiceJet
-              </Typography>
-              <span className="text-white">$340</span>
-            </CardBody>
-          </Card>
-        </div>
-      </div> */}
-      <div className={`flex justify-center gap-4`}>
-        {data.map((item, index) => (
-          <CardLayout key={index} {...item} />
-        ))}
       </div>
-      <div className=" px-10 pt-4 absolute mb-5 bottom-0 w-full">
+
+      <div className=" px-10 pt-4 sticky z-10 mb-5 bottom-0 w-full">
         <div className="relative flex">
           <span className="absolute inset-y-0 flex items-center">
+            <button className="ml-4" onClick={handleTick}>
+              <ImCheckboxChecked />
+            </button>
             <button
               type="button"
-              className="inline-flex items-center justify-center rounded-full h-12 w-12 transition duration-500 ease-in-out text-gray-500 hover:bg-gray-300 focus:outline-none"
+              onClick={runSpeechRecognition}
+              className="inline-flex items-center justify-center rounded-full h-12 w-12 transition duration-500 ease-in-out text-gray-500 hover:bg-gray-300 focus:outline-none ml-3"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -409,9 +277,13 @@ const HomePage = () => {
             </button>
           </span>
           <input
+            onChange={(e) => {
+              setPrompt(e.target.value);
+            }}
+            value={prompt}
             type="text"
             placeholder="Write your message!"
-            className="w-full focus:outline-none focus:placeholder-gray-400 text-gray-600 placeholder-gray-600 pl-12 bg-gray-200 rounded-full py-3"
+            className="w-full focus:outline-none focus:placeholder-gray-400 text-gray-600 placeholder-gray-600 pl-24 bg-gray-200 rounded-full py-3"
           />
           <div className="absolute right-0 items-center inset-y-0 hidden sm:flex mr-2">
             <button
